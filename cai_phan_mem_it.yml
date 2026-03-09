@@ -1,0 +1,8 @@
+---
+- name: Cai dat phan mem Windows (On-demand)
+  hosts: all
+  tasks:
+    - name: Cai dat phan mem {{ ten_phan_mem }}
+      win_chocolatey:
+        name: "{{ ten_phan_mem }}"
+        state: present
