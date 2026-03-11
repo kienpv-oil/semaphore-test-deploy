@@ -1,0 +1,26 @@
+---
+- name: Cai dat phan mem tu File Server bang tai khoan AD
+  hosts: all
+  tasks:
+    - name: Copy file cai dat tu File Server ve may Client
+      win_copy:
+        # Nhớ thay IP_FILE_SERVER và Thu_muc_Share bằng thực tế của bạn
+        src: "\\\\10.0.1.23\\Software\\Tools\\kienpv\\{{ ten_phan_mem }}" 
+        dest: "C:\\Temp\\{{ ten_phan_mem }}"
+        remote_src: yes
+      become: yes
+      become_method: runas
+      vars:
+        ansible_become_user: "{{ ansible_user }}"
+        ansible_become_password: "{{ ansible_password }}"
+
+    - name: Cai dat ngam phan mem
+      win_package:
+        path: "C:\\Temp\\{{ ten_phan_mem }}"
+        state: present
+        arguments: "/S" # (Tùy phần mềm exe có thể là /S, /SILENT hoặc /quiet)
+
+    - name: Xoa bo file da cai dat 
+      win_file:
+        path: "C:\\Temp\\{{ ten_phan_mem }}"
+        state: absent
