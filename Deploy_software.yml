@@ -4,7 +4,6 @@
   tasks:
     - name: Copy file cai dat tu File Server ve may Client
       win_copy:
-        # Nhớ thay IP_FILE_SERVER và Thu_muc_Share bằng thực tế của bạn
         src: "\\\\10.0.1.23\\Software\\Tools\\kienpv\\{{ ten_phan_mem }}" 
         dest: "C:\\Temp\\{{ ten_phan_mem }}"
         remote_src: yes
