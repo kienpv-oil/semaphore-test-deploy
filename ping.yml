@@ -1,6 +1,6 @@
 ---
 - name: Test connection to Linux hosts
-  hosts: linux
+  hosts: all
   tasks:
     - name: Ping hosts
       ansible.builtin.ping:
