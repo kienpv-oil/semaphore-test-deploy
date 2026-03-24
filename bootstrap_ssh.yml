@@ -3,7 +3,7 @@
   hosts: all
   become: yes
   tasks:
-    - name: "Đảm bảo thư mục .ssh tồn tại"
+    - name: "1. Đảm bảo thư mục .ssh tồn tại"
       file:
         path: "/home/it/.ssh"
         state: directory
@@ -11,8 +11,8 @@
         owner: it
         group: it
 
-    - name: "Copy Public Key từ máy Semaphore sang Server mục tiêu"
+    - name: "2. Đẩy Public Key vào file authorized_keys"
       authorized_key:
         user: it
         state: present
-        key: "{{ lookup('file', '/home/kienpv/.ssh/id_ed25519.pub') }}"
+        key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHcS4c3/xeZnWKXckH2tRcECCW6Bm6aEgz7unJ5xzXDi kienpv@semaphore-server"
