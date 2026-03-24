@@ -15,5 +15,4 @@
       authorized_key:
         user: it
         state: present
-        # Sử dụng đúng đường dẫn từ ảnh của bạn
         key: "{{ lookup('file', '/home/kienpv/.ssh/id_ed25519.pub') }}"
