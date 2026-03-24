@@ -1,0 +1,19 @@
+---
+- name: "Bootstrap: Đẩy Public Key cho hàng loạt Server"
+  hosts: all
+  become: yes
+  tasks:
+    - name: "Đảm bảo thư mục .ssh tồn tại"
+      file:
+        path: "/home/it/.ssh"
+        state: directory
+        mode: '0700'
+        owner: it
+        group: it
+
+    - name: "Copy Public Key từ máy Semaphore sang Server mục tiêu"
+      authorized_key:
+        user: it
+        state: present
+        # Sử dụng đúng đường dẫn từ ảnh của bạn
+        key: "{{ lookup('file', '/home/kienpv/.ssh/id_ed25519.pub') }}"
