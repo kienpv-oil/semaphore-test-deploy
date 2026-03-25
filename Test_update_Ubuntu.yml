@@ -55,44 +55,41 @@
       become: false
 #      no_log: true  # <--- Giau khong cho in Base64 ra log
 
-    - name: 2.7 - [Semaphore Server] Tao Secret tren Passbolt va Share cho User
+    - name: 2.7 -[Semaphore Server] Tao Secret tren Passbolt va Share cho User
       shell: |
         set -e # Dung script ngay neu co loi
         
-        echo "1. Dang tao Secret tren Passbolt..."
+        # Buoc A: Tao Resource tren Passbolt (Truyen truc tiep Flag)
         RESOURCE_JSON=$(passbolt create resource \
+          --serverAddress "{{ passbolt_url }}" \
+          --userPrivateKeyFile "/tmp/passbolt_ansible_gpg.asc" \
+          --userPassword "{{ passbolt_passphrase }}" \
           --name "[SSH Key] Server {{ inventory_hostname }}" \
           --uri "{{ inventory_hostname }}" \
           --username "{{ target_user }}" \
           --password "{{ pkey_slurp.content | b64decode }}" \
           --json)
         
-        echo "2. Trich xuat ID cua Secret..."
+        # Buoc B: Trich xuat ID cua Secret bang jq
         RESOURCE_ID=$(echo "$RESOURCE_JSON" | jq -r '.id')
         
-        if[ -z "$RESOURCE_ID" ] || [ "$RESOURCE_ID" == "null" ]; then
-            echo "LOI: Tao Secret that bai. API tra ve:"
-            echo "$RESOURCE_JSON"
+        if [ -z "$RESOURCE_ID" ] || [ "$RESOURCE_ID" == "null" ]; then
             exit 1
         fi
         
-        echo "Tao thanh cong! ID: $RESOURCE_ID"
-        echo "3. Dang Share cho User {{ passbolt_share_email }}..."
-        
-        # Su dung type 1 (Quyen Read)
+        # Buoc C: Share Resource cho Email User (Quyen Read = type 1)
         passbolt share resource \
           --id "$RESOURCE_ID" \
+          --serverAddress "{{ passbolt_url }}" \
+          --userPrivateKeyFile "/tmp/passbolt_ansible_gpg.asc" \
+          --userPassword "{{ passbolt_passphrase }}" \
           --user "{{ passbolt_share_email }}" \
           --type 1
           
-      environment:
-        # Passbolt CLI se doc cac bien nay ngam o duoi, KHONG IN RA LOG
-        PASSBOLT_SERVER_ADDRESS: "{{ passbolt_url }}"
-        PASSBOLT_USER_PRIVATE_KEY_FILE: "/tmp/passbolt_ansible_gpg.asc"
-        PASSBOLT_USER_PASSWORD: "{{ passbolt_passphrase }}"
       delegate_to: localhost
       connection: local
       become: false
+     # no_log: true  # <--- BẢO MẬT TUYỆT ĐỐI: KHÓA LOG 100%
       
     - name: 8 - [Semaphore Server] Xoa file GPG Key de don dep dau vet
       file:
