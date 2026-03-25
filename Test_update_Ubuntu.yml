@@ -51,6 +51,7 @@
         dest: "/tmp/passbolt_ansible_gpg.asc"
         mode: '0600'
       delegate_to: localhost # Lệnh này chạy ngay trên máy chủ Semaphore
+      connection: local
       become: false
 
     - name: 7 - [Semaphore Server] Tao Secret tren Passbolt va Share cho User
@@ -74,6 +75,7 @@
         PASSBOLT_USER_PRIVATE_KEY_FILE: "/tmp/passbolt_ansible_gpg.asc"
         PASSBOLT_USER_PASSWORD: "{{ passbolt_passphrase }}"
       delegate_to: localhost
+      connection: local
       become: false
 
     - name: 8 - [Semaphore Server] Xoa file GPG Key de don dep dau vet
@@ -81,4 +83,5 @@
         path: "/tmp/passbolt_ansible_gpg.asc"
         state: absent
       delegate_to: localhost
+      connection: local
       become: false
