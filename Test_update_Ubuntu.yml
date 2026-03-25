@@ -83,7 +83,7 @@
         passbolt share resource \
           --id "$RESOURCE_ID" \
           --serverAddress "{{ passbolt_url }}" \
-          --userPrivateKeyFile "/tmp/passbolt_ansible_gpg.asc" \
+          --userPrivateKey "/tmp/passbolt_ansible_gpg.asc" \
           --userPassword "{{ passbolt_passphrase }}" \
           --user "{{ passbolt_share_email }}" \
           --type 1
