@@ -1,0 +1,9 @@
+---
+- name: UBUNTU SERVER UPDATE
+  hosts: all
+  become: yes
+  tasks:
+    - name: Cap nhat danh sach goi (apt update & upgrade)
+      apt:
+        update_cache: yes
+        upgrade: dist
