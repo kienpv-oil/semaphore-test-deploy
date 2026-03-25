@@ -47,13 +47,25 @@
 
     - name: 2.6 -[Semaphore Server] Ghi Passbolt GPG Key ra file an (Giai ma Base64)
       copy:
-        content: "{{ passbolt_gpg_key | b64decode }}" # <--- Giai ma chuoi Base64 tro lai thanh file chuan
+        content: "{{ passbolt_gpg_key | trim | b64decode }}" # <--- Giai ma chuoi Base64 tro lai thanh file chuan
         dest: "/tmp/passbolt_ansible_gpg.asc"
         mode: '0600'
       delegate_to: localhost
       connection: local
       become: false
 #      no_log: true  # <--- Giau khong cho in Base64 ra log
+
+    - name: 2.6.1 - Debug kiem tra file GPG vua tao
+      shell: |
+        echo "Kiem tra 5 dong dau cua file:"
+        head -n 5 /tmp/passbolt_ansible_gpg.asc
+      register: gpg_debug
+      delegate_to: localhost
+
+    - name: In ket qua kiem tra ra Log
+      debug:
+        msg: "{{ gpg_debug.stdout }}"
+        
 
     - name: 2.7 -[Semaphore Server] Tao Secret tren Passbolt va Share cho User
       shell: |
@@ -83,7 +95,7 @@
         passbolt share resource \
           --id "$RESOURCE_ID" \
           --serverAddress "{{ passbolt_url }}" \
-          --userPrivateKey "/tmp/passbolt_ansible_gpg.asc" \
+          --userPrivateKeyFile "/tmp/passbolt_ansible_gpg.asc" \
           --userPassword "{{ passbolt_passphrase }}" \
           --user "{{ passbolt_share_email }}" \
           --type 1
