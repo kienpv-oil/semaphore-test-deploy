@@ -55,16 +55,16 @@
       become: false
 #      no_log: true  # <--- Giau khong cho in Base64 ra log
 
-    - name: 2.6.1 - Debug kiem tra file GPG vua tao
-      shell: |
-        echo "Kiem tra 5 dong dau cua file:"
-        head -n 5 /tmp/passbolt_ansible_gpg.asc
-      register: gpg_debug
-      delegate_to: localhost
+    # - name: 2.6.1 - Debug kiem tra file GPG vua tao
+    #   shell: |
+    #     echo "Kiem tra 5 dong dau cua file:"
+    #     head -n 5 /tmp/passbolt_ansible_gpg.asc
+    #   register: gpg_debug
+    #   delegate_to: localhost
 
-    - name: In ket qua kiem tra ra Log
-      debug:
-        msg: "{{ gpg_debug.stdout }}"
+    # - name: In ket qua kiem tra ra Log
+    #   debug:
+    #     msg: "{{ gpg_debug.stdout }}"
         
 
     - name: 2.7 -[Semaphore Server] Tao Secret tren Passbolt va Share cho User
