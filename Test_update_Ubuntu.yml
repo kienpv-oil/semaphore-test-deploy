@@ -54,26 +54,29 @@
       connection: local
       become: false
 
-    - name: 7 - [Semaphore Server] Tao Secret tren Passbolt va Share cho User
+    - name: 7 -[Semaphore Server] Tao Secret tren Passbolt va Share cho User
       shell: |
-        # A. Tao Secret moi tren Passbolt, format thanh JSON
+        # Buoc A: Tao Resource tren Passbolt (Truyen truc tiep xac thuc qua Flag de tranh loi moi truong)
         RESOURCE_JSON=$(passbolt create resource \
+          --serverAddress "{{ passbolt_url }}" \
+          --userPrivateKeyFile "/tmp/passbolt_ansible_gpg.asc" \
+          --userPassword "{{ passbolt_passphrase }}" \
           --name "[SSH Key] Server {{ inventory_hostname }}" \
           --uri "{{ inventory_hostname }}" \
           --username "{{ target_user }}" \
           --password "{{ pkey_slurp.content | b64decode }}" \
           --json)
         
-        # B. Trich xuat ID cua Secret do
+        # Buoc B: Trich xuat ID cua Resource bang jq
         RESOURCE_ID=$(echo $RESOURCE_JSON | jq -r '.id')
         
-        # C. Share Secret cho User thong qua Email (Permission 7 = Read)
-        passbolt share resource --resource "$RESOURCE_ID" --user "{{ passbolt_share_email }}" --permission 7
-      environment:
-        # Passbolt CLI sẽ đọc 3 biến môi trường này để tự động đăng nhập
-        PASSBOLT_SERVER_ADDRESS: "{{ passbolt_url }}"
-        PASSBOLT_USER_PRIVATE_KEY_FILE: "/tmp/passbolt_ansible_gpg.asc"
-        PASSBOLT_USER_PASSWORD: "{{ passbolt_passphrase }}"
+        # Buoc C: Share Resource cho User (Da sua loi cu phap --resource thanh Positional Argument)
+        passbolt share resource "$RESOURCE_ID" \
+          --serverAddress "{{ passbolt_url }}" \
+          --userPrivateKeyFile "/tmp/passbolt_ansible_gpg.asc" \
+          --userPassword "{{ passbolt_passphrase }}" \
+          --user "{{ passbolt_share_email }}" \
+          --permission 7
       delegate_to: localhost
       connection: local
       become: false
