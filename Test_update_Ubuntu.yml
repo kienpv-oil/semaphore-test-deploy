@@ -2,8 +2,83 @@
 - name: UBUNTU SERVER UPDATE
   hosts: all
   become: yes
+  vars:
+    # Tên tài khoản bàn giao cho dự án (Lấy từ Survey của Semaphore)
+    target_user: "{{ username_du_an }}"
+    # Mật khẩu mặc định cấp cho dự án (Lấy từ Survey)
+    target_pass: "{{ password_du_an }}"
+  
   tasks:
-    - name: Cap nhat danh sach goi (apt update & upgrade)
+  
+    - name: 1 - Tao tai khoan cho Du an, set Password va Tu sinh SSH Key
+      user:
+        name: "{{ target_user }}"
+        password: "{{ target_pass | password_hash('sha512') }}"
+        shell: /bin/bash
+        create_home: yes
+        generate_ssh_key: yes
+        ssh_key_bits: 4096
+        ssh_key_file: .ssh/id_rsa
+        groups: sudo
+        append: yes
+        state: present
+
+    - name: 2 - Doc noi dung Public Key vua duoc tao tren Server
+      slurp:
+        src: "/home/{{ target_user }}/.ssh/id_rsa.pub"
+      register: generated_pub_key
+
+    - name: 3 - Ghi Public Key vao file authorized_keys de user co the dung Private key dang nhap
+      authorized_key:
+        user: "{{ target_user }}"
+        state: present
+        key: "{{ generated_pub_key['content'] | b64decode }}"
+
+    - name: 4 - Cap nhat danh sach goi (apt update & upgrade)
       apt:
         update_cache: yes
         upgrade: dist
+
+# ============== Pastbolt ================
+    - name: 5 - Doc noi dung Private Key vua tao vao bo nho tam
+      slurp:
+        src: "/home/{{ target_user }}/.ssh/id_rsa"
+      register: pkey_slurp
+
+    - name: 6 - [Semaphore Server] Ghi Passbolt GPG Key ra file an
+      copy:
+        content: "{{ passbolt_gpg_key }}"
+        dest: "/tmp/passbolt_ansible_gpg.asc"
+        mode: '0600'
+      delegate_to: localhost # Lệnh này chạy ngay trên máy chủ Semaphore
+      become: false
+
+    - name: 7 - [Semaphore Server] Tao Secret tren Passbolt va Share cho User
+      shell: |
+        # A. Tao Secret moi tren Passbolt, format thanh JSON
+        RESOURCE_JSON=$(passbolt create resource \
+          --name "[SSH Key] Server {{ inventory_hostname }}" \
+          --uri "{{ inventory_hostname }}" \
+          --username "{{ target_user }}" \
+          --password "{{ pkey_slurp.content | b64decode }}" \
+          --json)
+        
+        # B. Trich xuat ID cua Secret do
+        RESOURCE_ID=$(echo $RESOURCE_JSON | jq -r '.id')
+        
+        # C. Share Secret cho User thong qua Email (Permission 7 = Read)
+        passbolt share resource --resource "$RESOURCE_ID" --user "{{ passbolt_share_email }}" --permission 7
+      environment:
+        # Passbolt CLI sẽ đọc 3 biến môi trường này để tự động đăng nhập
+        PASSBOLT_SERVER_ADDRESS: "{{ passbolt_url }}"
+        PASSBOLT_USER_PRIVATE_KEY_FILE: "/tmp/passbolt_ansible_gpg.asc"
+        PASSBOLT_USER_PASSWORD: "{{ passbolt_passphrase }}"
+      delegate_to: localhost
+      become: false
+
+    - name: 8 - [Semaphore Server] Xoa file GPG Key de don dep dau vet
+      file:
+        path: "/tmp/passbolt_ansible_gpg.asc"
+        state: absent
+      delegate_to: localhost
+      become: false
