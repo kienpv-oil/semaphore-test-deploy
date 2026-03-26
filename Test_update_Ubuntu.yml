@@ -55,14 +55,13 @@
       become: false
         
 
-    - name: 2.7 -[Semaphore Server] Tao Secret tren Passbolt va Share cho User
+    - name: 2.7 - [Semaphore Server] Tao Secret tren Passbolt va Share cho User
       shell: |
-        set -e
-
-        # Lay user ID cua {{ passbolt_share_email }}
-        USER_ID=$(passbolt list users -j | jq -r '.[] | select(.username=="{{ passbolt_share_email }}") | .id')
+        set -e # Dung script ngay neu co loi
         
-        # Buoc A: Tao Resource tren Passbolt
+        # =======================================================
+        # BUOC A: Tao Resource tren Passbolt
+        # =======================================================
         RESOURCE_JSON=$(passbolt create resource \
           --serverAddress "{{ passbolt_url }}" \
           --userPrivateKeyFile "/tmp/passbolt_ansible_gpg.asc" \
@@ -73,16 +72,35 @@
           --password "{{ pkey_slurp.content | b64decode }}" \
           --json)
         
-        # Buoc B: Trich xuat ID cua Resource bang jq
+        # Trich xuat ID cua Resource (Secret) bang jq
         RESOURCE_ID=$(echo "$RESOURCE_JSON" | jq -r '.id')
         
-        # FIX LỖI TYPO: Đã thêm dấu cách giữa "if" và "["
-        if [ -z "$RESOURCE_ID" ] ||[ "$RESOURCE_ID" == "null" ]; then
-            echo "Loi khong lay duoc ID"
+        if[ -z "$RESOURCE_ID" ] || [ "$RESOURCE_ID" == "null" ]; then
+            echo "Loi: Khong lay duoc Resource ID tu Passbolt"
             exit 1
         fi
         
-        # Buoc C: Share Resource cho User (Quyen Read = type 1)
+        # =======================================================
+        # BUOC B: Tim User ID dua tren Email (Phat hien cua ban)
+        # =======================================================
+        # Lay danh sach User duoi dang JSON
+        USERS_JSON=$(passbolt list users \
+          --serverAddress "{{ passbolt_url }}" \
+          --userPrivateKeyFile "/tmp/passbolt_ansible_gpg.asc" \
+          --userPassword "{{ passbolt_passphrase }}" \
+          --json)
+          
+        # Dung jq de tim ra user co username (email) khop voi o Survey, sau do lay id
+        USER_ID=$(echo "$USERS_JSON" | jq -r --arg email "{{ passbolt_share_email }}" '.[] | select(.username == $email) | .id')
+        
+        if[ -z "$USER_ID" ] || [ "$USER_ID" == "null" ]; then
+            echo "Loi: Khong tim thay User ID cho email {{ passbolt_share_email }}. Vui long kiem tra lai Email tren Passbolt."
+            exit 1
+        fi
+
+        # =======================================================
+        # BUOC C: Share Resource cho User ID (Quyen Read = type 1)
+        # =======================================================
         passbolt share resource \
           --id "$RESOURCE_ID" \
           --serverAddress "{{ passbolt_url }}" \
@@ -90,12 +108,13 @@
           --userPassword "{{ passbolt_passphrase }}" \
           --user "$USER_ID" \
           --type 1
+          
       args:
         executable: /bin/bash
       delegate_to: localhost
       connection: local
       become: false
-   #   no_log: true  # <--- BẢO MẬT: CHE KÍN LOG ĐỂ KHÔNG LỘ PASSWORD
+ #     no_log: true  # <--- GIỮ NGUYÊN DÒNG NÀY ĐỂ BẢO MẬT MẬT KHẨU
       
     - name: 8 - [Semaphore Server] Xoa file GPG Key de don dep dau vet
       file:
