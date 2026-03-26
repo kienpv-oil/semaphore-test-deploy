@@ -53,23 +53,14 @@
       delegate_to: localhost
       connection: local
       become: false
-#      no_log: true  # <--- Giau khong cho in Base64 ra log
-
-    # - name: 2.6.1 - Debug kiem tra file GPG vua tao
-    #   shell: |
-    #     echo "Kiem tra 5 dong dau cua file:"
-    #     head -n 5 /tmp/passbolt_ansible_gpg.asc
-    #   register: gpg_debug
-    #   delegate_to: localhost
-
-    # - name: In ket qua kiem tra ra Log
-    #   debug:
-    #     msg: "{{ gpg_debug.stdout }}"
         
 
     - name: 2.7 -[Semaphore Server] Tao Secret tren Passbolt va Share cho User
       shell: |
         set -e
+
+        # Lay user ID cua {{ passbolt_share_email }}
+        USER_ID=$(passbolt list users -j | jq -r '.[] | select(.username=="{{ passbolt_share_email }}") | .id')
         
         # Buoc A: Tao Resource tren Passbolt
         RESOURCE_JSON=$(passbolt create resource \
@@ -97,7 +88,7 @@
           --serverAddress "{{ passbolt_url }}" \
           --userPrivateKeyFile "/tmp/passbolt_ansible_gpg.asc" \
           --userPassword "{{ passbolt_passphrase }}" \
-          --user "{{ passbolt_share_email }}" \
+          --user "$USER_ID" \
           --type 1
       args:
         executable: /bin/bash
