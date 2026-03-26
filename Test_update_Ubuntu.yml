@@ -75,13 +75,14 @@
         # Trich xuat ID cua Resource (Secret) bang jq
         RESOURCE_ID=$(echo "$RESOURCE_JSON" | jq -r '.id')
         
-        if[ -z "$RESOURCE_ID" ] || [ "$RESOURCE_ID" == "null" ]; then
+        # FIX LỖI: Đã thêm dấu cách giữa if và [
+        if [ -z "$RESOURCE_ID" ] ||[ "$RESOURCE_ID" == "null" ]; then
             echo "Loi: Khong lay duoc Resource ID tu Passbolt"
             exit 1
         fi
         
         # =======================================================
-        # BUOC B: Tim User ID dua tren Email (Phat hien cua ban)
+        # BUOC B: Tim User ID dua tren Email
         # =======================================================
         # Lay danh sach User duoi dang JSON
         USERS_JSON=$(passbolt list users \
@@ -93,8 +94,9 @@
         # Dung jq de tim ra user co username (email) khop voi o Survey, sau do lay id
         USER_ID=$(echo "$USERS_JSON" | jq -r --arg email "{{ passbolt_share_email }}" '.[] | select(.username == $email) | .id')
         
-        if[ -z "$USER_ID" ] || [ "$USER_ID" == "null" ]; then
-            echo "Loi: Khong tim thay User ID cho email {{ passbolt_share_email }}. Vui long kiem tra lai Email tren Passbolt."
+        # FIX LỖI: Đã thêm dấu cách giữa if và [
+        if [ -z "$USER_ID" ] ||[ "$USER_ID" == "null" ]; then
+            echo "Loi: Khong tim thay User ID cho email {{ passbolt_share_email }}. Vui long kiem tra lai."
             exit 1
         fi
 
@@ -108,6 +110,13 @@
           --userPassword "{{ passbolt_passphrase }}" \
           --user "$USER_ID" \
           --type 1
+          
+      args:
+        executable: /bin/bash
+      delegate_to: localhost
+      connection: local
+      become: false
+      no_log: true  # <--- BẢO MẬT TUYỆT ĐỐI: KHÓA MÕM ANSIBLE
           
       args:
         executable: /bin/bash
