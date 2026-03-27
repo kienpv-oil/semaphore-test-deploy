@@ -118,12 +118,6 @@
       become: false
       no_log: true  # <--- BẢO MẬT TUYỆT ĐỐI: KHÓA MÕM ANSIBLE
           
-      args:
-        executable: /bin/bash
-      delegate_to: localhost
-      connection: local
-      become: false
- #     no_log: true  # <--- GIỮ NGUYÊN DÒNG NÀY ĐỂ BẢO MẬT MẬT KHẨU
       
     - name: 8 - [Semaphore Server] Xoa file GPG Key de don dep dau vet
       file:
