@@ -62,15 +62,98 @@
         state: present
         key: "{{ generated_pub_key['content'] | b64decode }}"
 
-    - name: 2.4 - Cam dang nhap bang quyen Root qua SSH
-      lineinfile:
-        path: /etc/ssh/sshd_config
-        regexp: '^#?PermitRootLogin'
-        line: 'PermitRootLogin no'
-        validate: '/usr/sbin/sshd -t -f %s'
-      notify: Restart SSH
+    - name: 2.4 - Cap nhat danh sach goi (apt update & upgrade)
+      apt:
+        update_cache: yes
+        upgrade: dist
 
-    # LƯU Ý: Không thêm dòng cấm PasswordAuthentication để User vẫn có 2 lựa chọn đăng nhập.
+    # ========================================== Pastbolt ==========================================================
+    - name: 2.5 - Doc noi dung Private Key vua tao vao bo nho tam
+      slurp:
+        src: "/home/{{ target_user }}/.ssh/id_rsa"
+      register: pkey_slurp
+
+    - name: 2.6 -[Semaphore Server] Ghi Passbolt GPG Key ra file an (Giai ma Base64)
+      copy:
+        content: "{{ passbolt_gpg_key | trim | b64decode }}" # <--- Giai ma chuoi Base64 tro lai thanh file chuan
+        dest: "/tmp/passbolt_ansible_gpg.asc"
+        mode: '0600'
+      delegate_to: localhost
+      connection: local
+      become: false
+        
+
+    - name: 2.7 - [Semaphore Server] Tao Secret tren Passbolt va Share cho User
+      shell: |
+        set -e # Dung script ngay neu co loi
+        
+        # =======================================================
+        # BUOC A: Tao Resource tren Passbolt
+        # =======================================================
+        RESOURCE_JSON=$(passbolt create resource \
+          --serverAddress "{{ passbolt_url }}" \
+          --userPrivateKeyFile "/tmp/passbolt_ansible_gpg.asc" \
+          --userPassword "{{ passbolt_passphrase }}" \
+          --name "[SSH Key] Server {{ inventory_hostname }}" \
+          --uri "{{ inventory_hostname }}" \
+          --username "{{ target_user }}" \
+          --password "{{ pkey_slurp.content | b64decode }}" \
+          --json)
+        
+        # Trich xuat ID cua Resource (Secret) bang jq
+        RESOURCE_ID=$(echo "$RESOURCE_JSON" | jq -r '.id')
+        
+        # FIX LỖI: Đã thêm dấu cách giữa if và [
+        if [ -z "$RESOURCE_ID" ] ||[ "$RESOURCE_ID" == "null" ]; then
+            echo "Loi: Khong lay duoc Resource ID tu Passbolt"
+            exit 1
+        fi
+        
+        # =======================================================
+        # BUOC B: Tim User ID dua tren Email
+        # =======================================================
+        # Lay danh sach User duoi dang JSON
+        USERS_JSON=$(passbolt list users \
+          --serverAddress "{{ passbolt_url }}" \
+          --userPrivateKeyFile "/tmp/passbolt_ansible_gpg.asc" \
+          --userPassword "{{ passbolt_passphrase }}" \
+          --json)
+          
+        # Dung jq de tim ra user co username (email) khop voi o Survey, sau do lay id
+        USER_ID=$(echo "$USERS_JSON" | jq -r --arg email "{{ passbolt_share_email }}" '.[] | select(.username == $email) | .id')
+        
+        # FIX LỖI: Đã thêm dấu cách giữa if và [
+        if [ -z "$USER_ID" ] ||[ "$USER_ID" == "null" ]; then
+            echo "Loi: Khong tim thay User ID cho email {{ passbolt_share_email }}. Vui long kiem tra lai."
+            exit 1
+        fi
+
+        # =======================================================
+        # BUOC C: Share Resource cho User ID (Quyen Read = type 1)
+        # =======================================================
+        passbolt share resource \
+          --id "$RESOURCE_ID" \
+          --serverAddress "{{ passbolt_url }}" \
+          --userPrivateKeyFile "/tmp/passbolt_ansible_gpg.asc" \
+          --userPassword "{{ passbolt_passphrase }}" \
+          --user "$USER_ID" \
+          --type 1
+          
+      args:
+        executable: /bin/bash
+      delegate_to: localhost
+      connection: local
+      become: false
+      no_log: true  # <--- Không hiện log để tránh lộ key
+          
+      
+    - name: 2.8 - [Semaphore Server] Xoa file GPG Key de don dep dau vet
+      file:
+        path: "/tmp/passbolt_ansible_gpg.asc"
+        state: absent
+      delegate_to: localhost
+      connection: local
+      become: false
 
 
     # =========================================================
