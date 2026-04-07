@@ -1,0 +1,181 @@
+---
+- name: UBUNTU SERVER HARDENING & OPTIMIZATION (AD INTEGRATION)
+  hosts: all
+  become: yes
+
+  vars:
+    # Tên tài khoản AD của người dùng
+    target_user: "{{ username_du_an }}"
+    
+    # Thông tin Domain của công ty
+    ad_domain: "smartosc.com"
+    domain_admin_user: "kienpv"
+    # Mật khẩu của admin join domain
+    domain_admin_pass: "{{ secret_domain_pass }}"
+
+  tasks:
+
+    # =========================================================
+    # 1. CẬP NHẬT HỆ THỐNG & TỰ ĐỘNG BẢO MẬT 
+    # =========================================================
+    - name: 1.1 - Cap nhat danh sach goi (apt update & upgrade)
+      apt:
+        update_cache: yes
+        upgrade: dist
+
+    - name: 1.2 - Cai dat Unattended-Upgrades
+      apt:
+        name: unattended-upgrades
+        state: present
+
+    - name: 1.3 - Kich hoat tu dong cap nhat bao mat
+      copy:
+        dest: /etc/apt/apt.conf.d/20auto-upgrades
+        content: |
+          APT::Periodic::Update-Package-Lists "1";
+          APT::Periodic::Unattended-Upgrade "1";
+        owner: root
+        group: root
+        mode: '0644'
+
+
+
+    # =========================================================
+    # 2. TÍCH HỢP ACTIVE DIRECTORY & PHÂN QUYỀN TRUY CẬP
+    # =========================================================
+    - name: 2.1 - Cai dat cac goi phan mem can thiet cho Active Directory
+      apt:
+        name:
+          - realmd
+          - sssd
+          - sssd-tools
+          - libnss-sss
+          - libpam-sss
+          - adcli
+          - samba-common-bin
+          - packagekit
+        state: present
+        update_cache: yes
+
+    - name: 2.2 - Kiem tra xem may da Join Domain chua (De tranh chay lai)
+      shell: realm discover {{ ad_domain }} | grep "configured"
+      register: realm_status
+      ignore_errors: yes
+      changed_when: false
+
+    - name: 2.3 - Tien hanh Join vao Domain smartosc.com
+      shell: echo '{{ domain_admin_pass }}' | realm join -U {{ domain_admin_user }} {{ ad_domain }}
+      when: realm_status.rc != 0
+      no_log: true  # <--- BẢO MẬT TUYỆT ĐỐI: Che giấu mật khẩu của tài khoản kienpv tren Log
+
+    - name: 2.4 - Cau hinh SSSD de Login NGAN GON (Khong can go @smartosc.com)
+      lineinfile:
+        path: /etc/sssd/sssd.conf
+        regexp: '^use_fully_qualified_names'
+        line: 'use_fully_qualified_names = False'
+      notify: Restart SSSD
+
+    - name: 2.5 - Cau hinh SSSD de tao duong dan Home Directory ngan gon (/home/phongtd)
+      lineinfile:
+        path: /etc/sssd/sssd.conf
+        regexp: '^fallback_homedir'
+        line: 'fallback_homedir = /home/%u'
+      notify: Restart SSSD
+
+    - name: 2.6 - Kich hoat tinh nang tu dong tao thu muc Home khi User login lan dau
+      shell: pam-auth-update --enable mkhomedir
+      changed_when: false
+
+    - name: 2.7 - Cam TAT CA user AD duoc phep SSH (Khoa toan bo de bao mat)
+      command: realm deny --all
+
+    - name: 2.8 - Cap quyen SSH cho User du an va Tai khoan IT
+      # Lưu ý: Cấp quyền cho cả kienpv để IT có đường lùi (backdoor) vào cứu hộ server khi cần
+      command: realm permit {{ target_user }}@{{ ad_domain }} {{ domain_admin_user }}@{{ ad_domain }}
+
+    - name: 2.9 - Cam dang nhap bang quyen Root qua SSH
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PermitRootLogin'
+        line: 'PermitRootLogin no'
+        validate: '/usr/sbin/sshd -t -f %s'
+      notify: Restart SSH
+
+
+
+    # =========================================================
+    # 3. CHỐNG DDOS (SYN FLOOD) & TỐI ƯU TCP/IP STACK 
+    # =========================================================
+    - name: 3.1 - Cau hinh sysctl.conf cho Bao mat va Hieu suat High Traffic
+      sysctl:
+        name: "{{ item.key }}"
+        value: "{{ item.value }}"
+        state: present
+        sysctl_set: yes
+        reload: yes
+      loop:
+        - { key: 'net.ipv4.tcp_syncookies', value: '1' }
+        - { key: 'net.ipv4.tcp_max_syn_backlog', value: '2048' }
+        - { key: 'net.ipv4.tcp_synack_retries', value: '2' }
+        - { key: 'net.core.somaxconn', value: '65535' }
+        - { key: 'net.core.netdev_max_backlog', value: '65535' }
+        - { key: 'net.ipv4.tcp_tw_reuse', value: '1' }
+        - { key: 'net.ipv4.ip_local_port_range', value: '1024 65535' }
+
+
+    # =========================================================
+    # 4. ĐỒNG BỘ THỜI GIAN VỚI CHRONY 
+    # =========================================================
+    - name: 4.1 - Cai dat Chrony
+      apt:
+        name: chrony
+        state: present
+
+    - name: 4.2 - Kich hoat va Start Chrony service
+      systemd:
+        name: chrony
+        enabled: yes
+        state: started
+
+
+    # =========================================================
+    # 5. CÀI ĐẶT WAZUH AGENT (Giữ nguyên)
+    # =========================================================
+    - name: 5.1 - Tai file cai dat Wazuh Agent (.deb)
+      get_url:
+        url: https://packages.wazuh.com/4.x/apt/pool/main/w/wazuh-agent/wazuh-agent_4.13.1-1_amd64.deb
+        dest: /tmp/wazuh-agent.deb
+
+    - name: 5.2 - Cai dat Wazuh Agent voi tham so Environment
+      shell: >
+        WAZUH_MANAGER='10.0.1.66' WAZUH_AGENT_GROUP='Servers' dpkg -i /tmp/wazuh-agent.deb
+      args:
+        creates: /var/ossec/etc/ossec.conf 
+
+    - name: 5.3 - Reload systemd, Enable va Start Wazuh
+      systemd:
+        name: wazuh-agent
+        daemon_reload: yes
+        enabled: yes
+        state: started
+
+    - name: 5.4 - Xoa file cai dat .deb de don dep
+      file:
+        path: /tmp/wazuh-agent.deb
+        state: absent
+
+
+
+  # =========================================================
+  # HANDLERS
+  # =========================================================
+  handlers:
+    - name: Restart SSH
+      systemd:
+        name: sshd
+        state: restarted
+        
+    - name: Restart SSSD
+      systemd:
+        name: sssd
+        state: restarted
