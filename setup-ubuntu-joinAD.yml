@@ -72,7 +72,7 @@
       shell: echo '{{ domain_admin_pass }}' | realm join -U {{ domain_admin_user }} {{ ad_domain }}
       # Chi Join neu ten mien smartosc.com KHONG co trong danh sach (Tuc la chua join)
       when: ad_domain not in realm_status.stdout
-      no_log: true  # <--- Bao mat: Che giau mat khau AD
+   #   no_log: true  # <--- Bao mat: Che giau mat khau AD
 
     - name: 2.4 - Cau hinh SSSD de Login NGAN GON (Khong can go @smartosc.com)
       lineinfile:
