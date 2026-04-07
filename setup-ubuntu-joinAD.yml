@@ -57,16 +57,16 @@
         state: present
         update_cache: yes
 
-    - name: 2.2 - Kiem tra xem may da Join Domain chua (De tranh chay lai)
-      shell: realm discover {{ ad_domain }} | grep "configured"
+    - name: 2.2 - Kiem tra trang thai may chu da Join Domain chua
+      shell: realm list
       register: realm_status
-      ignore_errors: yes
       changed_when: false
 
     - name: 2.3 - Tien hanh Join vao Domain smartosc.com
       shell: echo '{{ domain_admin_pass }}' | realm join -U {{ domain_admin_user }} {{ ad_domain }}
-      when: realm_status.rc != 0
-      no_log: true  # <--- BẢO MẬT TUYỆT ĐỐI: Che giấu mật khẩu của tài khoản kienpv tren Log
+      # Chi Join neu ten mien smartosc.com KHONG co trong danh sach (Tuc la chua join)
+      when: ad_domain not in realm_status.stdout
+      no_log: true  # <--- Bao mat: Che giau mat khau AD
 
     - name: 2.4 - Cau hinh SSSD de Login NGAN GON (Khong can go @smartosc.com)
       lineinfile:
