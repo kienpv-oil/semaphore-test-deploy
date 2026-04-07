@@ -57,6 +57,12 @@
         state: present
         update_cache: yes
 
+    - name: 2.1b - Dam bao dich vu realmd (Realm Daemon) luon hoat dong
+      systemd:
+        name: realmd
+        state: started
+        enabled: yes
+
     - name: 2.2 - Kiem tra trang thai may chu da Join Domain chua
       shell: realm list
       register: realm_status
