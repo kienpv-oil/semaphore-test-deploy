@@ -90,7 +90,6 @@
       command: realm deny --all
 
     - name: 2.8 - Cap quyen SSH cho User du an va Tai khoan IT
-      # Lưu ý: Cấp quyền cho cả kienpv để IT có đường lùi (backdoor) vào cứu hộ server khi cần
       command: realm permit {{ target_user }}@{{ ad_domain }} {{ domain_admin_user }}@{{ ad_domain }}
 
     - name: 2.9 - Cam dang nhap bang quyen Root qua SSH
