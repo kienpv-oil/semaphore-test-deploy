@@ -38,12 +38,25 @@
         group: root
         mode: '0644'
 
+    # =========================================================
+    # 2. ĐỒNG BỘ THỜI GIAN VỚI CHRONY 
+    # =========================================================
+    - name: 2.1 - Cai dat Chrony
+      apt:
+        name: chrony
+        state: present
+
+    - name: 2.2 - Kich hoat va Start Chrony service
+      systemd:
+        name: chrony
+        enabled: yes
+        state: started
 
 
     # =========================================================
-    # 2. TÍCH HỢP ACTIVE DIRECTORY & PHÂN QUYỀN TRUY CẬP
+    # 3. TÍCH HỢP ACTIVE DIRECTORY & PHÂN QUYỀN TRUY CẬP
     # =========================================================
-    - name: 2.1 - Cai dat cac goi phan mem can thiet cho Active Directory
+    - name: 3.1 - Cai dat cac goi phan mem can thiet cho Active Directory
       apt:
         name:
           - realmd
@@ -58,63 +71,49 @@
         update_cache: yes
 
 
-    # =========================================================
-    # 4. ĐỒNG BỘ THỜI GIAN VỚI CHRONY 
-    # =========================================================
-    - name: 4.1 - Cai dat Chrony
-      apt:
-        name: chrony
-        state: present
 
-    - name: 4.2 - Kich hoat va Start Chrony service
-      systemd:
-        name: chrony
-        enabled: yes
-        state: started
-
-
-    - name: 2.1b - Dam bao dich vu realmd (Realm Daemon) luon hoat dong
+    - name: 3.1b - Dam bao dich vu realmd (Realm Daemon) luon hoat dong
       systemd:
         name: realmd
         state: started
         enabled: yes
 
-    - name: 2.2 - Kiem tra trang thai may chu da Join Domain chua
+    - name: 3.2 - Kiem tra trang thai may chu da Join Domain chua
       shell: realm list
       register: realm_status
       changed_when: false
 
-    - name: 2.3 - Tien hanh Join vao Domain smartosc.com
+    - name: 3.3 - Tien hanh Join vao Domain smartosc.com
       shell: echo '{{ domain_admin_pass }}' | realm join -U {{ domain_admin_user }} {{ ad_domain }}
       # Chi Join neu ten mien smartosc.com KHONG co trong danh sach (Tuc la chua join)
       when: ad_domain not in realm_status.stdout
    #   no_log: true  # <--- Bao mat: Che giau mat khau AD
 
-    - name: 2.4 - Cau hinh SSSD de Login NGAN GON (Khong can go @smartosc.com)
+    - name: 3.4 - Cau hinh SSSD de Login NGAN GON (Khong can go @smartosc.com)
       lineinfile:
         path: /etc/sssd/sssd.conf
         regexp: '^use_fully_qualified_names'
         line: 'use_fully_qualified_names = False'
       notify: Restart SSSD
 
-    - name: 2.5 - Cau hinh SSSD de tao duong dan Home Directory ngan gon (/home/phongtd)
+    - name: 3.5 - Cau hinh SSSD de tao duong dan Home Directory ngan gon (/home/phongtd)
       lineinfile:
         path: /etc/sssd/sssd.conf
         regexp: '^fallback_homedir'
         line: 'fallback_homedir = /home/%u'
       notify: Restart SSSD
 
-    - name: 2.6 - Kich hoat tinh nang tu dong tao thu muc Home khi User login lan dau
+    - name: 3.6 - Kich hoat tinh nang tu dong tao thu muc Home khi User login lan dau
       shell: pam-auth-update --enable mkhomedir
       changed_when: false
 
-    - name: 2.7 - Cam TAT CA user AD duoc phep SSH (Khoa toan bo de bao mat)
+    - name: 3.7 - Cam TAT CA user AD duoc phep SSH (Khoa toan bo de bao mat)
       command: realm deny --all
 
-    - name: 2.8 - Cap quyen SSH cho User du an va Tai khoan IT
+    - name: 3.8 - Cap quyen SSH cho User du an va Tai khoan IT
       command: realm permit {{ target_user }}@{{ ad_domain }} {{ domain_admin_user }}@{{ ad_domain }}
 
-    - name: 2.9 - Cam dang nhap bang quyen Root qua SSH
+    - name: 3.9 - Cam dang nhap bang quyen Root qua SSH
       lineinfile:
         path: /etc/ssh/sshd_config
         regexp: '^#?PermitRootLogin'
@@ -125,9 +124,9 @@
 
 
     # =========================================================
-    # 3. CHỐNG DDOS (SYN FLOOD) & TỐI ƯU TCP/IP STACK 
+    # 4. CHỐNG DDOS (SYN FLOOD) & TỐI ƯU TCP/IP STACK 
     # =========================================================
-    - name: 3.1 - Cau hinh sysctl.conf cho Bao mat va Hieu suat High Traffic
+    - name: 4.1 - Cau hinh sysctl.conf cho Bao mat va Hieu suat High Traffic
       sysctl:
         name: "{{ item.key }}"
         value: "{{ item.value }}"
