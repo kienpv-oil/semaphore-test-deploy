@@ -56,7 +56,7 @@
     # =========================================================
     # 3. TÍCH HỢP ACTIVE DIRECTORY & PHÂN QUYỀN TRUY CẬP
     # =========================================================
-    - name: 3.1 - Cai dat cac goi phan mem can thiet cho Active Directory
+    - name: 3.1a - Cai dat cac goi phan mem can thiet cho Active Directory
       apt:
         name:
           - realmd
@@ -69,8 +69,6 @@
           - packagekit
         state: present
         update_cache: yes
-
-
 
     - name: 3.1b - Dam bao dich vu realmd (Realm Daemon) luon hoat dong
       systemd:
