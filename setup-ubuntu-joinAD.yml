@@ -57,6 +57,22 @@
         state: present
         update_cache: yes
 
+
+    # =========================================================
+    # 4. ĐỒNG BỘ THỜI GIAN VỚI CHRONY 
+    # =========================================================
+    - name: 4.1 - Cai dat Chrony
+      apt:
+        name: chrony
+        state: present
+
+    - name: 4.2 - Kich hoat va Start Chrony service
+      systemd:
+        name: chrony
+        enabled: yes
+        state: started
+
+
     - name: 2.1b - Dam bao dich vu realmd (Realm Daemon) luon hoat dong
       systemd:
         name: realmd
@@ -128,19 +144,6 @@
         - { key: 'net.ipv4.ip_local_port_range', value: '1024 65535' }
 
 
-    # =========================================================
-    # 4. ĐỒNG BỘ THỜI GIAN VỚI CHRONY 
-    # =========================================================
-    - name: 4.1 - Cai dat Chrony
-      apt:
-        name: chrony
-        state: present
-
-    - name: 4.2 - Kich hoat va Start Chrony service
-      systemd:
-        name: chrony
-        enabled: yes
-        state: started
 
 
     # =========================================================
