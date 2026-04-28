@@ -1,0 +1,10 @@
+---
+- name: "Bootstrap: Add SSH Key cho root"
+  hosts: all
+  become: yes
+  tasks:
+    - name: "Add public key vào root"
+      authorized_key:
+        user: root
+        state: present
+        key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHcS4c3/xeZnWKXckH2tRcECCW6Bm6aEgz7unJ5xzXDi kienpv@semaphore-server"
