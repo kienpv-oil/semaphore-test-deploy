@@ -106,7 +106,7 @@
         responses:
           (?i)Password.*: "{{ domain_admin_pass }}"
       when: ad_domain not in realm_status.stdout
-      no_log: true  # BẢO MẬT TUYỆT ĐỐI KHÔNG LỘ PASS KIENPV
+      no_log: yes  # BẢO MẬT TUYỆT ĐỐI KHÔNG LỘ PASS KIENPV
 
     - name: 3.4 - Cau hinh SSSD de Login NGAN GON (Khong can go @smartosc.com)
       lineinfile:
