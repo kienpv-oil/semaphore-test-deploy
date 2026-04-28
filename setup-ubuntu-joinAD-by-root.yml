@@ -29,7 +29,7 @@
         name: root
         # Bắt buộc phải băm (hash) mật khẩu bằng sha512 thì Linux mới hiểu
         password: "{{ new_root_pass | password_hash('sha512') }}"
-      no_log: true # Che giấu mật khẩu root trên màn hình log
+      no_log: yes # Che giấu mật khẩu root trên màn hình log
 
 
     # =========================================================
